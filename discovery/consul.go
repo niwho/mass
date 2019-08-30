@@ -119,9 +119,17 @@ func (reg *Registration) GetName() string {
 	return reg.ServiceName
 }
 
-func (reg *Registration) GetMeta(key string) string {
+func (reg *Registration) GetMetaValue(key string) string {
 	val, _ := reg.Meta[key]
 	return val
+}
+
+func (reg *Registration) GetMeta() map[string]string {
+	return reg.Meta
+}
+
+func (reg *Registration) GetTags() []string {
+	return reg.Tags
 }
 
 func (reg *Registration) GetAddr() string {
