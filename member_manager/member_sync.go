@@ -49,22 +49,23 @@ type SyncResponse struct {
 //}
 
 // 同步或确认key的最新“分布”
-func (ms *MemberSync) Probe(req SyncRequest, resp *SyncResponse) {
+func (ms *MemberSync) Probe(req SyncRequest, resp *SyncResponse) error{
 	mem := ms.manager.GetMember(req.Key)
 	if mem == nil {
 		resp.ErrorCode = -1
-		return
+		return nil
 	}
 
 	resp.ErrorCode = 0
 	resp.Key = req.Key
 	resp.Node = mem.(*Member).MemberSub
-	return
+	return nil
 }
 
 // 同步或确认key的最新“分布”
-func (ms *MemberSync) SyncKey(req SyncRequest, resp *SyncResponse) {
+func (ms *MemberSync) SyncKey(req SyncRequest, resp *SyncResponse) error {
 	ms.manager.UpateLocalRoute(req.Key, &Member{MemberSub: req.Node})
 
 	resp.ErrorCode = 0
+	return nil
 }
