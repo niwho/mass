@@ -26,9 +26,16 @@ type IMemberManager interface {
 	GetLocal() IMember
 	//Set(key string, val interface{})
 	// 返回路由的IMember ,r如果没有则本地做，并广播其他已知节点 这个状态，其他节点收到要clear本地local记录
-	GetMember(routerKey string) IMember
-	UpateLocalRoute(routerKey string, member IMember)
+	GetMember(routerKey string) IMember // 只取当前节点 只是判断取 全局的 还是 local的
+	GetMemberWithRemote(routerKey string) IMember // 先判断本节点，再获取远程节点，并同步
 
+	UpateLocalRoute(routerKey string, member IMember)
+	BroadCastRoute(routerKey string, member IMember)
+
+
+
+
+	// 以下这些接口 暂时没有真正的策略逻辑
 	// sync 随机一个节点同步？
 	SyncRoute(member IMember)
 
@@ -36,6 +43,13 @@ type IMemberManager interface {
 	BroadCast(rpcname string, args interface{}, reply interface{}) error // 异步
 
 	// 广播 同步
-	CallAll(rpcname string, args interface{}, reply interface{}) ([]interface{},error) // 同步，有一个“正确”响应即可
+	CallAll(rpcname string, args interface{}, reply interface{}) ([]interface{}, error) // 同步，有一个“正确”响应即可
 
+}
+
+// req， resp 必须 实现的接口
+type ISynMessage interface {
+	GetKeyNode() IMember
+	GetKey() string
+	GetSourceNode() IMember
 }

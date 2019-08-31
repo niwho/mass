@@ -1,6 +1,9 @@
 package member_manager
 
-import "github.com/niwho/mass/member_manager/proto"
+import (
+	"github.com/niwho/mass/member_manager/proto"
+	"github.com/niwho/mass/simple_rpc"
+)
 
 type IProxyRequest interface {
 }
@@ -26,21 +29,58 @@ type MemberSync struct {
 	manager proto.IMemberManager
 }
 
-type ProxyRequest struct {
-}
-
-type ProxyResponse struct {
-}
+//type ProxyRequest struct {
+//}
+//
+//type ProxyResponse struct {
+//}
 
 type SyncRequest struct {
 	Node MemberSub
 	Key  string
 }
 
+func (req *SyncRequest) GetKeyNode() proto.IMember {
+	return nil
+}
+
+func (req *SyncRequest) GetKey() string {
+	return req.Key
+}
+
+func (req *SyncRequest) GetSourceNode() proto.IMember {
+	return &Member{
+		ISimpleRpc: simple_rpc.NewSimpleRpc(req.Node.host, req.Node.port),
+		MemberSub:  req.Node,
+	}
+}
+
 type SyncResponse struct {
 	ErrorCode int
 	Node      MemberSub
+	SouceNode MemberSub
 	Key       string
+}
+
+func (resp *SyncResponse) GetKeyNode() proto.IMember {
+	if resp.Node.Name != "" {
+		return &Member{
+			ISimpleRpc: simple_rpc.NewSimpleRpc(resp.Node.host, resp.Node.port),
+			MemberSub:  resp.Node,
+		}
+	}
+	return nil
+}
+
+func (resp *SyncResponse) GetKey() string {
+	return resp.Key
+}
+
+func (resp *SyncResponse) GetSourceNode() proto.IMember {
+	return &Member{
+		ISimpleRpc: simple_rpc.NewSimpleRpc(resp.SouceNode.host, resp.SouceNode.port),
+		MemberSub:  resp.SouceNode,
+	}
 }
 
 // 代理请求
@@ -49,10 +89,13 @@ type SyncResponse struct {
 //}
 
 // 同步或确认key的最新“分布”
-func (ms *MemberSync) Probe(req SyncRequest, resp *SyncResponse) error{
+func (ms *MemberSync) Probe(req SyncRequest, resp *SyncResponse) error {
+	resp.SouceNode = ms.local.(*Member).MemberSub
+
 	mem := ms.manager.GetMember(req.Key)
 	if mem == nil {
 		resp.ErrorCode = -1
+
 		return nil
 	}
 
@@ -64,8 +107,13 @@ func (ms *MemberSync) Probe(req SyncRequest, resp *SyncResponse) error{
 
 // 同步或确认key的最新“分布”
 func (ms *MemberSync) SyncKey(req SyncRequest, resp *SyncResponse) error {
+	resp.SouceNode = ms.local.(*Member).MemberSub
+
 	ms.manager.UpateLocalRoute(req.Key, &Member{MemberSub: req.Node})
 
 	resp.ErrorCode = 0
+	resp.Node = req.Node
+	resp.Key = req.Key
+
 	return nil
 }

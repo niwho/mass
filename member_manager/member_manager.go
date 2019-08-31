@@ -95,11 +95,17 @@ type MemberManager struct {
 }
 
 func NewMemberManager(localName, ServiceName string, localIp string, port int, meta map[string]string, consuleAddress string) (proto.IMemberManager, error) {
+	host, _ := meta["c_host"]
+	if host == "" {
+		host = localIp
+		meta["c_host"] = localIp
+	}
+	cport, _ := strconv.ParseInt(meta["c_port"], 10, 64)
 	imm := &MemberManager{
 		ServiceName: ServiceName,
 		LocalIp:     localIp,
 		Port:        port,
-		localMember: NewMember(localName, localIp, port),
+		localMember: NewMember(localName, host, int(cport)),
 	}
 	/*
 		local, _ := buntdb.Open(":memory:")
@@ -179,7 +185,7 @@ func (mm *MemberManager) GetMember(routerKey string) proto.IMember {
 }
 
 // 本地没有则探测
-func (mm *MemberManager) GetMemberMust(routerKey string) proto.IMember {
+func (mm *MemberManager) GetMemberWithRemote(routerKey string) proto.IMember {
 	var memsub MemberSub
 	err := mm.routeInfo.View(func(tx *buntdb.Tx) error {
 		if val, err := tx.Get(routerKey); err != nil {
@@ -192,8 +198,18 @@ func (mm *MemberManager) GetMemberMust(routerKey string) proto.IMember {
 		logs.Log(logs.F{"err": err}).Error("GetMember")
 		// probe 探测
 		var resp SyncResponse
-		mm.CallAll("MemberSync.Probe", SyncRequest{Key: routerKey}, &resp)
-		return nil
+		select {
+		case mem := <-mm.GetRemoteMember(SyncRequest{Key: routerKey}, &resp):
+			// 同时更新本地
+			mm.UpateLocalRoute(routerKey, mem)
+
+			return mem
+		case <-time.After(time.Millisecond * 200):
+			return nil
+		}
+
+		//mm.CallAll("MemberSync.Probe", SyncRequest{Key: routerKey}, &resp)
+		//return nil
 	}
 
 	return &Member{MemberSub: memsub}
@@ -201,6 +217,7 @@ func (mm *MemberManager) GetMemberMust(routerKey string) proto.IMember {
 
 // 根据termid更新
 func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember) {
+	var needSync *MemberSub
 	err := mm.routeInfo.Update(func(tx *buntdb.Tx) error {
 
 		if val, err := tx.Get(routerKey); err == nil {
@@ -212,6 +229,10 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 			} else {
 				// 这种情况是不是触发一次广播当前的最新的routeKey ->member的映射，防止别的节点也有旧的数据映射
 				// 或反馈 请求来源方
+				var ms MemberSub
+				jsonCompatible.Unmarshal([]byte(val), &MemberSub{})
+				needSync = &ms
+
 			}
 		} else {
 			if val, err := member.Marshal(); err == nil {
@@ -223,10 +244,27 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 		return nil
 	})
 
+	// 还是广播所有人, 目前只反馈发起方
+	if needSync != nil {
+		var resp SyncResponse
+		member.Pub("MemberSync.SyncKey", SyncRequest{
+			Key:  routerKey,
+			Node: *needSync,
+		}, &resp)
+	}
+
 	if err != nil {
 		logs.Log(logs.F{"err": err}).Error("UpateLocalRoute")
 	}
 
+}
+
+func (mm *MemberManager) BroadCastRoute(routerKey string, member proto.IMember) {
+	var resp SyncResponse
+	mm.BroadCast("MemberSync.SyncKey", SyncRequest{
+		Key:  routerKey,
+		Node: member.(*Member).MemberSub,
+	}, &resp)
 }
 
 //和另一个结点交互路由信息
@@ -272,6 +310,61 @@ func (mm *MemberManager) CallAll(rpcname string, args interface{}, reply interfa
 		}()
 	}
 	return
+}
+
+// 探测其它节点，同时同步其它没有的节点
+// todo 作为 协调员的角色， 比较各节点返回的node/termid 是否一致？
+func (mm *MemberManager) GetRemoteMember(args interface{}, reply interface{}) <-chan proto.IMember {
+	// 有一个响应的即可
+	var wg sync.WaitGroup
+	var ch chan proto.IMember
+	ch = make(chan proto.IMember, len(mm.GetMembers()))
+
+	var realKeyNode proto.IMember
+	var realKey string
+	var needSyncNodes sync.Map
+	for _, member := range mm.GetMembers() {
+		// 是否显示过滤自己local
+		wg.Add(1)
+		// 并发pub
+		go func() {
+			innerReply := reflect.New(reflect.ValueOf(reply).Elem().Type()) //Elem 必须是指针类型
+			member.Call("MemberSync.Probe", args, innerReply)
+			var iobj interface{}
+			iobj = innerReply
+			if iobj.(proto.ISynMessage).GetKeyNode() != nil {
+				realKeyNode = iobj.(proto.ISynMessage).GetKeyNode()
+				realKey = iobj.(proto.ISynMessage).GetKey()
+				ch <- realKeyNode
+			} else {
+				needSyncNodes.Store(member.GetName(), member)
+			}
+			wg.Done()
+			//innerReply 这次调用的返回结果
+			// 怎么确定是正常成功的呢
+			//callReplys = append(callReplys, innerReply) // 和reply是同类型的集合
+		}()
+	}
+	// 处理同步逻辑
+	go func() {
+		wg.Wait()
+		// 同步其它没有数据映射的节点
+		if realKeyNode != nil {
+			needSyncNodes.Range(func(key, value interface{}) bool {
+				node := value.(proto.IMember)
+				var resp SyncResponse
+				node.Pub("MemberSync.SyncKey", SyncRequest{
+					Key:  realKey,
+					Node: realKeyNode.(*Member).MemberSub,
+				}, &resp)
+				return true
+			})
+		} else {
+			ch <- nil
+		}
+
+	}()
+	return ch
 }
 
 func (mm *MemberManager) routerInfoRemoveNode(nodeName string) error {
