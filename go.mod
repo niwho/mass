@@ -22,7 +22,7 @@ require (
 	github.com/niwho/utils v0.0.0-20190717094620-159e5e804688
 	github.com/olivere/elastic v6.2.23+incompatible // indirect
 	github.com/robfig/cron v1.2.0 // indirect
-	github.com/satori/go.uuid v1.2.0 // indirect
+	github.com/satori/go.uuid v0.0.0-20181028125025-b2ce2384e17b // indirect
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/tidwall/btree v0.0.0-20170113224114-9876f1454cf0 // indirect
 	github.com/tidwall/buntdb v1.1.0

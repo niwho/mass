@@ -1,6 +1,7 @@
 package member_manager
 
 import (
+	"fmt"
 	"github.com/json-iterator/go"
 	"github.com/niwho/logs"
 	"github.com/niwho/mass/discovery"
@@ -10,17 +11,21 @@ import (
 	rpc_proto "github.com/niwho/mass/simple_rpc/proto"
 	"github.com/tidwall/buntdb"
 	"reflect"
+	"runtime"
+	"strconv"
 	"sync"
 	"time"
 )
 
 type MemberSub struct {
-	Name  string `json:"name"`
-	State int    `json:"state"`
+	Name string `json:"name"`
 
 	host   string `json:"host"`
 	port   int    `json:"port"`
 	TermId int64  `json:"term_id"`
+
+	State      int   `json:"state"`
+	UpdateTime int64 `json:"update_time"`
 }
 
 type Member struct {
@@ -85,9 +90,11 @@ type MemberManager struct {
 	// 管理所有结点（状态）
 	members   sync.Map
 	routeInfo *buntdb.DB
+
+	stoped bool
 }
 
-func NewMemberManager(localName, ServiceName string, localIp string, port int, meta map[string]string) (proto.IMemberManager, error) {
+func NewMemberManager(localName, ServiceName string, localIp string, port int, meta map[string]string, consuleAddress string) (proto.IMemberManager, error) {
 	imm := &MemberManager{
 		ServiceName: ServiceName,
 		LocalIp:     localIp,
@@ -105,15 +112,23 @@ func NewMemberManager(localName, ServiceName string, localIp string, port int, m
 
 	var err error
 	imm.routeInfo, err = buntdb.Open(":memory:")
+	imm.routeInfo.Update(func(tx *buntdb.Tx) error {
+		tx.CreateIndex("index_name", "*", buntdb.IndexJSON("name"))
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
 	//imm.ISimpleRpc = simple_rpc.NewSimpleRpc(localIp, port)
-	imm.IDiscovery = discovery.NewDiscovery(ServiceName, meta, localIp, port)
+	imm.IDiscovery = discovery.NewDiscovery(ServiceName, meta, localIp, port, consuleAddress)
 
 	imm.localMember.(*Member).RegisterRpc(&MemberSync{
 		local: imm.localMember.(*Member),
 	})
+
+	// 同步节点
+	go imm.backgroud()
 
 	return imm, nil
 }
@@ -149,39 +164,39 @@ func (mm *MemberManager) Set(key string, val interface{}) {
 func (mm *MemberManager) GetMember(routerKey string) proto.IMember {
 	var memsub MemberSub
 	err := mm.routeInfo.View(func(tx *buntdb.Tx) error {
-		if val, err := tx.Get(routerKey); err!=nil{
+		if val, err := tx.Get(routerKey); err != nil {
 			return jsonFastest.Unmarshal([]byte(val), &memsub)
-		}else {
+		} else {
 			return err
 		}
 	})
-	if err!=nil {
+	if err != nil {
 		logs.Log(logs.F{"err": err}).Error("GetMember")
 		return nil
 	}
 
-	return &Member{MemberSub:memsub}
+	return &Member{MemberSub: memsub}
 }
 
 // 本地没有则探测
 func (mm *MemberManager) GetMemberMust(routerKey string) proto.IMember {
 	var memsub MemberSub
 	err := mm.routeInfo.View(func(tx *buntdb.Tx) error {
-		if val, err := tx.Get(routerKey); err!=nil{
+		if val, err := tx.Get(routerKey); err != nil {
 			return jsonFastest.Unmarshal([]byte(val), &memsub)
-		}else {
+		} else {
 			return err
 		}
 	})
-	if err!=nil {
+	if err != nil {
 		logs.Log(logs.F{"err": err}).Error("GetMember")
 		// probe 探测
 		var resp SyncResponse
-		mm.CallAll("MemberSync.Probe", SyncRequest{Key:routerKey}, &resp)
+		mm.CallAll("MemberSync.Probe", SyncRequest{Key: routerKey}, &resp)
 		return nil
 	}
 
-	return &Member{MemberSub:memsub}
+	return &Member{MemberSub: memsub}
 }
 
 // 根据termid更新
@@ -224,7 +239,7 @@ func (mm *MemberManager) SyncRoute(member proto.IMember) {
 func (mm *MemberManager) BroadCast(rpcname string, args interface{}, reply interface{}) error {
 	for _, member := range mm.GetMembers() {
 		// 是否显示过滤自己local
-		if member.GetName() == mm.localMember.GetName(){
+		if member.GetName() == mm.localMember.GetName() {
 			continue
 		}
 
@@ -257,4 +272,79 @@ func (mm *MemberManager) CallAll(rpcname string, args interface{}, reply interfa
 		}()
 	}
 	return
+}
+
+func (mm *MemberManager) routerInfoRemoveNode(nodeName string) error {
+	var needDeleteKeys []string
+	_ = mm.routeInfo.View(func(tx *buntdb.Tx) error {
+		return tx.AscendEqual("index_name", fmt.Sprintf(`{"name":"%s"}`, nodeName), func(key, value string) bool {
+			needDeleteKeys = append(needDeleteKeys, key)
+			return true // 一直继续
+		})
+	})
+
+	if len(needDeleteKeys) > 0 {
+		_ = mm.routeInfo.Update(func(tx *buntdb.Tx) error {
+			for _, key := range needDeleteKeys {
+				tx.Delete(key)
+			}
+			return nil
+		})
+	}
+	return nil
+}
+
+// 轮询节点状态变化信息
+func (mm *MemberManager) backgroud() error {
+	job := func() {
+		defer func() {
+			//atomic.AddInt32(&af.idleNum, -1)
+			if err := recover(); err != nil {
+				const size = 64 << 20
+				buf := make([]byte, size)
+				buf = buf[:runtime.Stack(buf, false)]
+				fmt.Printf("AsyncJob panic=%v\n%s\n", err, buf)
+			}
+		}()
+
+		for !mm.stoped {
+			updateTime := time.Now().Unix()
+			// 更新节点
+			nodes, _ := mm.GetService()
+			for _, node := range nodes {
+				// 相互通信的端口信息在meta里，最外层的port是服务的端口（check health）
+				meta := node.GetMeta()
+				if meta == nil {
+					logs.Log(logs.F{"node": node}).Error("")
+					continue
+				}
+				host := meta["c_host"]
+				port, _ := strconv.ParseInt(meta["c_port"], 10, 64)
+				localNode, ok := mm.members.Load(node.GetName())
+				if !ok {
+					localNode, _ = mm.members.LoadOrStore(node.GetName(), NewMember(node.GetName(), host, int(port)))
+				}
+				localNode.(*Member).UpdateTime = updateTime
+			}
+
+			// 如果是 初始化启动，是不是随机从几个节点获取信息填充自己的routerInfo todo
+
+			for _, mem := range mm.GetMembers() {
+				if mem.(*Member).UpdateTime < updateTime {
+					// 该节点已经失效了
+					mm.members.Delete(mem.GetName())
+					//清理routerinfo
+					mm.routerInfoRemoveNode(mem.GetName())
+				}
+			}
+
+			time.Sleep(time.Second * 5) //阻塞
+		}
+	}
+
+	for !mm.stoped {
+		job() //阻塞
+	}
+
+	return nil
 }

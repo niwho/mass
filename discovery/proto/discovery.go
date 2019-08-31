@@ -12,6 +12,8 @@ type IService interface {
 	GetMetaValue(string) string
 	GetMeta() map[string]string
 	GetAddr() string
+	GetHost() string
+	GetPort() int
 }
 
 type IDiscovery interface {

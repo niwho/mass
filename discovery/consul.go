@@ -7,25 +7,39 @@ import (
 	"github.com/niwho/mass/discovery/proto"
 	"github.com/niwho/utils"
 	"log"
+	"sync"
 )
 
-var client *consulapi.Client
+const (
+	DEFAULT_CONSUL = "consul.rightpaddle.cn:8500"
+)
 
-func init() {
+var onetime sync.Once
+
+func Init(consulAddress string) *consulapi.Client {
 	config := consulapi.DefaultConfig()
-	config.Address = "consul.rightpaddle.cn:8500"
+	config.Address = consulAddress
+	if consulAddress == "" {
+		config.Address = DEFAULT_CONSUL
+	}
 	clientx, err := consulapi.NewClient(config)
 	if err != nil {
 		logs.Log(logs.F{"err": err}).Error("init consul")
 		panic(err)
 	}
-	client = clientx
+	return clientx
 }
 
-func NewRegistration(name string, tags []string, meta map[string]string, advt string, port int) proto.IRegister {
-
+func NewRegistration(name string, tags []string, meta map[string]string, advt string, port int, consulAddress string) proto.IRegister {
+	client := Init(consulAddress)
 	reg := &Registration{
 		client: client,
+
+		ServiceName: name,
+		Advt:        advt,
+		Port:        port,
+		Meta:        meta,
+		Tags:        tags,
 	}
 	reg.Register(name, tags, meta, advt, port)
 
@@ -79,7 +93,7 @@ func (reg *Registration) Register(name string, tags []string, meta map[string]st
 	registration.Check = check
 	//log.Println("get check.HTTP:", check)
 	logs.Log(logs.F{"check": check}).Debug("")
-	err := client.Agent().ServiceRegister(registration)
+	err := reg.client.Agent().ServiceRegister(registration)
 
 	if err != nil {
 		log.Fatal("register server error : ", err)
@@ -108,7 +122,7 @@ func (reg *Registration) GetService() ([]proto.IService, error) {
 }
 
 func (reg *Registration) Unregister() {
-	err := client.Agent().ServiceDeregister(reg.Id)
+	err := reg.client.Agent().ServiceDeregister(reg.Id)
 	if err != nil {
 		//log.Fatal("register server error : ", err)
 		logs.Log(logs.F{"err": err}).Error("Unregister")
@@ -136,22 +150,10 @@ func (reg *Registration) GetAddr() string {
 	return reg.Advt
 }
 
-func GetService(serviceName string) ([]proto.IService, error) {
-	e, _, err := client.Health().Service(serviceName, "", true, nil)
-	if err != nil {
-		logs.Log(logs.F{"err": err}).Error("GetService")
-		return nil, err
-	}
-	var iss []proto.IService
-	for _, ei := range e {
-		log.Println(ei.Service.Address, ei.Service.Port, ei.Service.Meta, ei.Service.Service, ei.Service.ID,
-			ei.Node.Address, ei.Node.ID)
-		iss = append(iss, &Registration{
-			ServiceName: ei.Service.Service,
-			Meta:        ei.Service.Meta,
-			Advt:        ei.Service.Address,
-			Port:        ei.Service.Port,
-		})
-	}
-	return iss, nil
+func (reg *Registration) GetHost() string {
+	return reg.Advt
+}
+
+func (reg *Registration) GetPort() int {
+	return reg.Port
 }

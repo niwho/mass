@@ -9,10 +9,19 @@ type Service struct {
 	Name string
 	Meta map[string]string
 	Addr string
+	Host string
+	Port int
 }
 
 func (sv *Service) GetName() string {
 	return sv.Name
+}
+
+func (sv *Service) GetHost() string {
+	return sv.Host
+}
+func (sv *Service) GetPort() int {
+	return sv.Port
 }
 
 func (sv *Service) GetTags() []string {
@@ -40,7 +49,7 @@ type Discovery struct {
 	Port    int
 }
 
-func NewDiscovery(name string, meta map[string]string, localIp string, port int) proto.IDiscovery {
+func NewDiscovery(name string, meta map[string]string, localIp string, port int, consuleAddress string) proto.IDiscovery {
 	dc := &Discovery{
 		LocalIp: localIp,
 		Port:    port,
@@ -50,8 +59,11 @@ func NewDiscovery(name string, meta map[string]string, localIp string, port int)
 		Name: name,
 		Meta: meta,
 		Addr: fmt.Sprintf("%s:%d", localIp, port),
+		Host: localIp,
+		Port: port,
+
 	}
-	dc.IRegister = NewRegistration(dc.GetName(), dc.GetTags(), dc.GetMeta(), localIp, port)
+	dc.IRegister = NewRegistration(dc.GetName(), dc.GetTags(), dc.GetMeta(), localIp, port, consuleAddress)
 
 	return dc
 }
