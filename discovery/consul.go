@@ -60,6 +60,10 @@ type Registration struct {
 
 func (reg *Registration) Register(nodeName, serviceName string, tags []string, meta map[string]string, advt string, port int) {
 	reg.Id = nodeName
+
+	// 保护逻辑
+	reg.Unregister()
+
 	reg.ServiceName = serviceName
 	reg.Tags = tags
 	reg.Meta = meta
