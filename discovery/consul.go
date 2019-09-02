@@ -113,8 +113,7 @@ func (reg *Registration) GetService() ([]proto.IService, error) {
 	}
 	var iss []proto.IService
 	for _, ei := range e {
-		log.Println(ei.Service.Address, ei.Service.Port, ei.Service.Meta, ei.Service.Service, ei.Service.ID,
-			ei.Node.Address, ei.Node.ID)
+		//log.Println(ei.Service.Address, ei.Service.Port, ei.Service.Meta, ei.Service.Service, ei.Service.ID, ei.Node.Address, ei.Node.ID)
 		iss = append(iss, &Registration{
 			Id:          ei.Service.ID,
 			ServiceName: ei.Service.Service,
@@ -123,7 +122,7 @@ func (reg *Registration) GetService() ([]proto.IService, error) {
 			Port:        ei.Service.Port,
 		})
 	}
-	logs.Log(logs.F{"iss": iss}).Debug("GetService")
+	//logs.Log(logs.F{"iss": iss}).Debug("GetService")
 	return iss, nil
 }
 
