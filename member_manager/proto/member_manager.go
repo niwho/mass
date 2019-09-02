@@ -20,6 +20,7 @@ type IMember interface {
 type IMemberManager interface {
 
 	// 同时会注册结点（服务）
+	RegisteRpc(m ...interface{}) error
 	StartService() error
 
 	GetMembers() []IMember

@@ -139,6 +139,12 @@ func NewMemberManager(localName, ServiceName string, localIp string, port int, m
 	return imm, nil
 }
 
+func (mm *MemberManager) RegisteRpc(m ...interface{}) error {
+	//err := mm.ISimpleRpc.ListenRPC()
+	err := mm.localMember.(*Member).RegisterRpc(m...)
+	return err
+}
+
 func (mm *MemberManager) StartService() error {
 	//err := mm.ISimpleRpc.ListenRPC()
 	err := mm.localMember.(*Member).ListenRPC()
