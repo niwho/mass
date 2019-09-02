@@ -131,6 +131,7 @@ func NewMemberManager(localName, ServiceName string, localIp string, port int, m
 
 	imm.localMember.(*Member).RegisterRpc(&MemberSync{
 		local: imm.localMember.(*Member),
+		manager: imm,
 	})
 
 	// 同步节点
