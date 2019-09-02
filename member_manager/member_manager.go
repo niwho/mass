@@ -67,10 +67,16 @@ func (m *Member) SetActive() {
 }
 
 func (m *Member) Call(rpcname string, args interface{}, reply interface{}) error {
+	if m.ISimpleRpc == nil {
+		m.ISimpleRpc = simple_rpc.NewSimpleRpc(m.host, m.port)
+	}
 	return m.ISimpleRpc.Call(rpcname, args, reply)
 }
 
 func (m *Member) Pub(rpcname string, args interface{}, reply interface{}) error {
+	if m.ISimpleRpc == nil {
+		m.ISimpleRpc = simple_rpc.NewSimpleRpc(m.host, m.port)
+	}
 	return m.ISimpleRpc.Pub(rpcname, args, reply)
 }
 
@@ -130,7 +136,7 @@ func NewMemberManager(localName, ServiceName string, localIp string, port int, m
 	imm.IDiscovery = discovery.NewDiscovery(localName, ServiceName, meta, localIp, port, consuleAddress)
 
 	imm.localMember.(*Member).RegisterRpc(&MemberSync{
-		local: imm.localMember.(*Member),
+		local:   imm.localMember.(*Member),
 		manager: imm,
 	})
 
@@ -221,6 +227,10 @@ func (mm *MemberManager) GetMemberWithRemote(routerKey string) proto.IMember {
 
 		//mm.CallAll("MemberSync.Probe", SyncRequest{Key: routerKey}, &resp)
 		//return nil
+	}
+
+	if memsub.port == 0 {
+		return nil
 	}
 
 	return &Member{MemberSub: memsub}
