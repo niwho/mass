@@ -40,15 +40,15 @@ type SyncRequest struct {
 	Key  string
 }
 
-func (req *SyncRequest) GetKeyNode() proto.IMember {
+func (req SyncRequest) GetKeyNode() proto.IMember {
 	return nil
 }
 
-func (req *SyncRequest) GetKey() string {
+func (req SyncRequest) GetKey() string {
 	return req.Key
 }
 
-func (req *SyncRequest) GetSourceNode() proto.IMember {
+func (req SyncRequest) GetSourceNode() proto.IMember {
 	return &Member{
 		ISimpleRpc: simple_rpc.NewSimpleRpc(req.Node.host, req.Node.port),
 		MemberSub:  req.Node,
