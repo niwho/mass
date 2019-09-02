@@ -201,7 +201,7 @@ func (mm *MemberManager) GetMember(routerKey string) proto.IMember {
 func (mm *MemberManager) GetMemberWithRemote(routerKey string) proto.IMember {
 	var memsub MemberSub
 	err := mm.routeInfo.View(func(tx *buntdb.Tx) error {
-		if val, err := tx.Get(routerKey); err != nil {
+		if val, err := tx.Get(routerKey); err == nil {
 			return jsonFastest.Unmarshal([]byte(val), &memsub)
 		} else {
 			return err
