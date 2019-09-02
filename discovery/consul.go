@@ -30,7 +30,7 @@ func Init(consulAddress string) *consulapi.Client {
 	return clientx
 }
 
-func NewRegistration(name string, tags []string, meta map[string]string, advt string, port int, consulAddress string) proto.IRegister {
+func NewRegistration(name, serviceName string, tags []string, meta map[string]string, advt string, port int, consulAddress string) proto.IRegister {
 	client := Init(consulAddress)
 	reg := &Registration{
 		client: client,
@@ -41,7 +41,7 @@ func NewRegistration(name string, tags []string, meta map[string]string, advt st
 		Meta:        meta,
 		Tags:        tags,
 	}
-	reg.Register(name, tags, meta, advt, port)
+	reg.Register(name, serviceName, tags, meta, advt, port)
 
 	return reg
 }
@@ -58,9 +58,9 @@ type Registration struct {
 	client *consulapi.Client
 }
 
-func (reg *Registration) Register(name string, tags []string, meta map[string]string, advt string, port int) {
-	reg.Id = utils.GenerateLogID()
-	reg.ServiceName = name
+func (reg *Registration) Register(nodeName, serviceName string, tags []string, meta map[string]string, advt string, port int) {
+	reg.Id = nodeName
+	reg.ServiceName = serviceName
 	reg.Tags = tags
 	reg.Meta = meta
 
@@ -112,12 +112,14 @@ func (reg *Registration) GetService() ([]proto.IService, error) {
 		log.Println(ei.Service.Address, ei.Service.Port, ei.Service.Meta, ei.Service.Service, ei.Service.ID,
 			ei.Node.Address, ei.Node.ID)
 		iss = append(iss, &Registration{
+			Id:          ei.Node.ID,
 			ServiceName: ei.Service.Service,
 			Meta:        ei.Service.Meta,
 			Advt:        ei.Service.Address,
 			Port:        ei.Service.Port,
 		})
 	}
+	logs.Log(logs.F{"iss": iss}).Debug("GetService")
 	return iss, nil
 }
 
@@ -129,8 +131,15 @@ func (reg *Registration) Unregister() {
 	}
 }
 
-func (reg *Registration) GetName() string {
+func (reg *Registration) GetServiceName() string {
 	return reg.ServiceName
+}
+func (reg *Registration) GetName() string {
+	return reg.Id
+}
+
+func (reg *Registration) GetAddressWithPort() string {
+	return fmt.Sprintf("%s:%d", reg.Advt, reg.Port)
 }
 
 func (reg *Registration) GetMetaValue(key string) string {

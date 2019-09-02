@@ -127,7 +127,7 @@ func NewMemberManager(localName, ServiceName string, localIp string, port int, m
 		return nil, err
 	}
 	//imm.ISimpleRpc = simple_rpc.NewSimpleRpc(localIp, port)
-	imm.IDiscovery = discovery.NewDiscovery(ServiceName, meta, localIp, port, consuleAddress)
+	imm.IDiscovery = discovery.NewDiscovery(localName, ServiceName, meta, localIp, port, consuleAddress)
 
 	imm.localMember.(*Member).RegisterRpc(&MemberSync{
 		local: imm.localMember.(*Member),
@@ -399,7 +399,9 @@ func (mm *MemberManager) routerInfoRemoveNode(nodeName string) error {
 
 // 轮询节点状态变化信息
 func (mm *MemberManager) backgroud() error {
+	//fmt.Println("backgroud", mm.stoped)
 	job := func() {
+		//fmt.Println("backgroud", "job")
 		defer func() {
 			//atomic.AddInt32(&af.idleNum, -1)
 			if err := recover(); err != nil {
@@ -414,6 +416,7 @@ func (mm *MemberManager) backgroud() error {
 			updateTime := time.Now().Unix()
 			// 更新节点
 			nodes, _ := mm.GetService()
+			//fmt.Println("backgroud", nodes)
 			for _, node := range nodes {
 				// 相互通信的端口信息在meta里，最外层的port是服务的端口（check health）
 				meta := node.GetMeta()

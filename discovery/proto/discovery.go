@@ -1,13 +1,14 @@
 package proto
 
 type IRegister interface {
-	Register(name string, tags []string, meta map[string]string, advt string, port int)
+	Register(name, service string, tags []string, meta map[string]string, advt string, port int)
 	GetService() ([]IService, error)
 	Unregister()
 }
 
 type IService interface {
 	GetName() string
+	GetServiceName() string
 	GetTags() []string
 	GetMetaValue(string) string
 	GetMeta() map[string]string

@@ -6,15 +6,20 @@ import (
 )
 
 type Service struct {
-	Name string
-	Meta map[string]string
-	Addr string
-	Host string
-	Port int
+	Name        string
+	ServiceName string
+	Meta        map[string]string
+	Addr        string
+	Host        string
+	Port        int
 }
 
 func (sv *Service) GetName() string {
 	return sv.Name
+}
+
+func (sv *Service) GetServiceName() string {
+	return sv.ServiceName
 }
 
 func (sv *Service) GetHost() string {
@@ -49,7 +54,7 @@ type Discovery struct {
 	Port    int
 }
 
-func NewDiscovery(name string, meta map[string]string, localIp string, port int, consuleAddress string) proto.IDiscovery {
+func NewDiscovery(name , serviceName string, meta map[string]string, localIp string, port int, consuleAddress string) proto.IDiscovery {
 	dc := &Discovery{
 		LocalIp: localIp,
 		Port:    port,
@@ -57,21 +62,21 @@ func NewDiscovery(name string, meta map[string]string, localIp string, port int,
 
 	dc.IService = &Service{
 		Name: name,
+		ServiceName:serviceName,
 		Meta: meta,
 		Addr: fmt.Sprintf("%s:%d", localIp, port),
 		Host: localIp,
 		Port: port,
-
 	}
-	dc.IRegister = NewRegistration(dc.GetName(), dc.GetTags(), dc.GetMeta(), localIp, port, consuleAddress)
+	dc.IRegister = NewRegistration(dc.GetName(), dc.GetServiceName(), dc.GetTags(), dc.GetMeta(), localIp, port, consuleAddress)
 
 	return dc
 }
 
 func (dc *Discovery) RegisterService(service proto.IService) {
-	dc.Register(dc.GetName(), dc.GetTags(), dc.GetMeta(), dc.LocalIp, dc.Port)
+	dc.Register(dc.GetName(), dc.GetServiceName(), dc.GetTags(), dc.GetMeta(), dc.LocalIp, dc.Port)
 }
 
-func (dc *Discovery) GetService() ([]proto.IService , error){
+func (dc *Discovery) GetService() ([]proto.IService, error) {
 	return dc.IRegister.GetService()
 }
