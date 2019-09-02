@@ -92,7 +92,7 @@ func (reg *Registration) Register(nodeName, serviceName string, tags []string, m
 	//注册check服务。
 	registration.Check = check
 	//log.Println("get check.HTTP:", check)
-	logs.Log(logs.F{"check": check}).Debug("")
+	logs.Log(logs.F{"check": check, "id": reg.Id}).Debug("")
 	err := reg.client.Agent().ServiceRegister(registration)
 
 	if err != nil {
@@ -112,7 +112,7 @@ func (reg *Registration) GetService() ([]proto.IService, error) {
 		log.Println(ei.Service.Address, ei.Service.Port, ei.Service.Meta, ei.Service.Service, ei.Service.ID,
 			ei.Node.Address, ei.Node.ID)
 		iss = append(iss, &Registration{
-			Id:          ei.Node.ID,
+			Id:          ei.Service.ID,
 			ServiceName: ei.Service.Service,
 			Meta:        ei.Service.Meta,
 			Advt:        ei.Service.Address,
