@@ -243,6 +243,7 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 
 		if val, err := tx.Get(routerKey); err == nil {
 			OldTermId := jsoniter.Get([]byte(val), "term_id").ToInt64()
+			logs.Log(logs.F{"old": string(val), "now": member}).Debug("")
 			if member.GetTermId() > OldTermId {
 				if val, err := member.Marshal(); err == nil {
 					tx.Set(routerKey, string(val), nil)
@@ -256,7 +257,9 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 
 			}
 		} else {
+			logs.Log(logs.F{"now": member}).Debug("")
 			if val, err := member.Marshal(); err == nil {
+				logs.Log(logs.F{"now": member, "val": string(val)}).Debug("")
 				tx.Set(routerKey, string(val), nil)
 			} else {
 				return err
@@ -353,7 +356,7 @@ func (mm *MemberManager) GetRemoteMember(args interface{}, reply interface{}) <-
 			member.Call("MemberSync.Probe", args, innerReply)
 			// var iobj interface{}
 			iobj := innerReply.Interface()
-			logs.Log(logs.F{"innerReply": innerReply}).Debug(fmt.Sprintf("%v, %#", iobj, iobj))
+			//logs.Log(logs.F{"innerReply": innerReply}).Debug(fmt.Sprintf("%v, %#", iobj, iobj))
 			if iobj.(proto.ISynMessage).GetKeyNode() != nil {
 				realKeyNode = iobj.(proto.ISynMessage).GetKeyNode()
 				realKey = iobj.(proto.ISynMessage).GetKey()
