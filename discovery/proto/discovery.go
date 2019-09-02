@@ -19,5 +19,6 @@ type IService interface {
 
 type IDiscovery interface {
 	RegisterService(service IService)
+	Unregister()
 	GetService() ([]IService, error)
 }
