@@ -342,6 +342,7 @@ func (mm *MemberManager) GetRemoteMember(args interface{}, reply interface{}) <-
 			member.Call("MemberSync.Probe", args, innerReply)
 			var iobj interface{}
 			iobj = innerReply
+			logs.Log(logs.F{"innerReply": innerReply}).Info(fmt.Sprintf("%v, %#", iobj, iobj))
 			if iobj.(proto.ISynMessage).GetKeyNode() != nil {
 				realKeyNode = iobj.(proto.ISynMessage).GetKeyNode()
 				realKey = iobj.(proto.ISynMessage).GetKey()
