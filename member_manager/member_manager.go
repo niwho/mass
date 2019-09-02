@@ -194,6 +194,7 @@ func (mm *MemberManager) GetMemberWithRemote(routerKey string) proto.IMember {
 			return err
 		}
 	})
+	// 本地没有找到
 	if err != nil {
 		logs.Log(logs.F{"err": err}).Error("GetMember")
 		// probe 探测
@@ -201,6 +202,9 @@ func (mm *MemberManager) GetMemberWithRemote(routerKey string) proto.IMember {
 		select {
 		case mem := <-mm.GetRemoteMember(SyncRequest{Key: routerKey}, &resp):
 			// 同时更新本地
+			if mem == nil {
+				return nil
+			}
 			mm.UpateLocalRoute(routerKey, mem)
 
 			return mem
@@ -244,7 +248,7 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 		return nil
 	})
 
-	// 还是广播所有人, 目前只反馈发起方
+	// 还是广播所有人, 目前只反馈发起方 todo 反馈所有人
 	if needSync != nil {
 		var resp SyncResponse
 		member.Pub("MemberSync.SyncKey", SyncRequest{
