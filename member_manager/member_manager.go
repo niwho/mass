@@ -340,9 +340,9 @@ func (mm *MemberManager) GetRemoteMember(args interface{}, reply interface{}) <-
 		go func() {
 			innerReply := reflect.New(reflect.ValueOf(reply).Elem().Type()) //Elem 必须是指针类型
 			member.Call("MemberSync.Probe", args, innerReply)
-			var iobj interface{}
-			iobj = innerReply
-			logs.Log(logs.F{"innerReply": innerReply}).Info(fmt.Sprintf("%v, %#", iobj, iobj))
+			// var iobj interface{}
+			iobj := innerReply.Interface()
+			logs.Log(logs.F{"innerReply": innerReply}).Debug(fmt.Sprintf("%v, %#", iobj, iobj))
 			if iobj.(proto.ISynMessage).GetKeyNode() != nil {
 				realKeyNode = iobj.(proto.ISynMessage).GetKeyNode()
 				realKey = iobj.(proto.ISynMessage).GetKey()
