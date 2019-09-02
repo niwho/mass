@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/gob"
 	"fmt"
-	"github.com/niwho/logs"
 	"io"
 	"log"
 	"net/rpc"
@@ -18,7 +17,7 @@ func TimeoutCoder(f func(interface{}) error, e interface{}, msg string) error {
 	select {
 	case e := <-echan:
 		//fmt.Printf("TimeoutCoder:%v", e)
-		logs.Log(logs.F{"e": e}).Debug("TimeoutCoder")
+		//logs.Log(logs.F{"e": e}).Debug("TimeoutCoder")
 		return e
 	case <-time.After(time.Second*5):
 		return fmt.Errorf("Timeout %s", msg)
@@ -34,17 +33,17 @@ type gobServerCodec struct {
 }
 
 func (c *gobServerCodec) ReadRequestHeader(r *rpc.Request) error {
-	logs.Log(logs.F{"r": r}).Debug("ReadRequestHeader")
+	//logs.Log(logs.F{"r": r}).Debug("ReadRequestHeader")
 	return TimeoutCoder(c.dec.Decode, r, "server read request header")
 }
 
 func (c *gobServerCodec) ReadRequestBody(body interface{}) error {
-	logs.Log(logs.F{"body": body}).Debug("ReadRequestBody")
+	//logs.Log(logs.F{"body": body}).Debug("ReadRequestBody")
 	return TimeoutCoder(c.dec.Decode, body, "server read request body")
 }
 
 func (c *gobServerCodec) WriteResponse(r *rpc.Response, body interface{}) (err error) {
-	logs.Log(logs.F{"r":r, "body":body}).Debug("WriteResponse")
+	//logs.Log(logs.F{"r":r, "body":body}).Debug("WriteResponse")
 	if err = TimeoutCoder(c.enc.Encode, r, "server write response"); err != nil {
 		if c.encBuf.Flush() == nil {
 			log.Println("rpc: gob error encoding response:", err)
