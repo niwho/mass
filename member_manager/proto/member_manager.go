@@ -37,6 +37,7 @@ type IMemberManager interface {
 	RemoveLocalRoute(routerKey string) error
 
 	BroadCastRoute(routerKey string, member IMember) // 发布key在哪个节点， 至于发布策略，业务自己搞 一般第一次广播就行了
+	BroadCastDelRoute(routerKey string) error
 
 
 	// 高度集成的接口，包括了查找及update router

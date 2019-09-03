@@ -1,6 +1,7 @@
 package member_manager
 
 import (
+	"errors"
 	"fmt"
 	"github.com/json-iterator/go"
 	"github.com/niwho/logs"
@@ -201,6 +202,28 @@ func (mm *MemberManager) GetRouter() *buntdb.DB {
 	return mm.routeInfo
 }
 
+func (mm *MemberManager) BroadCastDelRoute(routerKey string) error{
+	if mem := mm.GetMemberWithRemote(routerKey); mem != nil {
+		// 有状态不一致的可能，mem 可能“错误的”没有获取到
+		if mem.GetName() == mm.GetLocal().GetName() {
+			// 自己处理
+			return mm.RemoveLocalRoute(routerKey)
+		} else {
+			// 远程节点处理
+			// 如果报错，本地节点重试？ 目前放给业务节点去判断
+
+			//return mem.Call("MemberSync.DelKey", req, resp)
+			var resp SyncResponse
+			return mem.Pub("MemberSync.DelKey", SyncRequest{
+				Key:  routerKey,
+				Node: mm.GetLocal().(*Member).MemberSub,
+			}, &resp)
+		}
+
+	}
+	return errors.New("not found")
+}
+
 // 本地没有则探测
 func (mm *MemberManager) GetMemberWithRemote(routerKey string) proto.IMember {
 	var memsub MemberSub
@@ -262,9 +285,9 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 
 			}
 		} else {
-			logs.Log(logs.F{"now": member}).Debug("")
+			//logs.Log(logs.F{"now": member}).Debug("")
 			if val, err := member.Marshal(); err == nil {
-				logs.Log(logs.F{"now": member, "val": string(val)}).Debug("")
+				//logs.Log(logs.F{"now": member, "val": string(val)}).Debug("")
 				tx.Set(routerKey, string(val), nil)
 			} else {
 				return err
