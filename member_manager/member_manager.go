@@ -272,7 +272,7 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 		}
 		return nil
 	})
-	logs.Log(logs.F{"err": err, "needSync": needSync}).Debug("")
+	//logs.Log(logs.F{"err": err, "needSync": needSync}).Debug("")
 	// 还是广播所有人, 目前只反馈发起方 todo 反馈所有人
 	if needSync != nil {
 		var resp SyncResponse
@@ -286,6 +286,22 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 		logs.Log(logs.F{"err": err}).Error("UpateLocalRoute")
 	}
 
+}
+
+func (mm *MemberManager) RemoveLocalRoute(routerKey string) error {
+
+	err := mm.routeInfo.View(func(tx *buntdb.Tx) error {
+		_, err := tx.Get(routerKey)
+		return err
+	})
+	//found
+	if err == nil {
+		err = mm.routeInfo.Update(func(tx *buntdb.Tx) error {
+			_, err := tx.Delete(routerKey)
+			return err
+		})
+	}
+	return err
 }
 
 func (mm *MemberManager) BroadCastRoute(routerKey string, member proto.IMember) {

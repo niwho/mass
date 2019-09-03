@@ -34,6 +34,8 @@ type IMemberManager interface {
 	GetMemberWithRemote(routerKey string) IMember // 先判断本节点，再获取远程节点，并同步, 如果都没有否则业务自行处理，新建或some
 
 	UpateLocalRoute(routerKey string, member IMember) // 更新本地路由
+	RemoveLocalRoute(routerKey string) error
+
 	BroadCastRoute(routerKey string, member IMember) // 发布key在哪个节点， 至于发布策略，业务自己搞 一般第一次广播就行了
 
 
