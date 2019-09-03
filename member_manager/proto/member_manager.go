@@ -1,5 +1,7 @@
 package proto
 
+import "github.com/tidwall/buntdb"
+
 type IMember interface {
 	GetName() string
 	GetTermId() int64
@@ -46,6 +48,9 @@ type IMemberManager interface {
 
 	// 广播 同步
 	CallAll(rpcname string, args interface{}, reply interface{}) ([]interface{}, error) // 同步，有一个“正确”响应即可
+
+	// debug router
+	GetRouter() *buntdb.DB
 
 }
 

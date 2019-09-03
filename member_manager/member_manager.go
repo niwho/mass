@@ -183,7 +183,7 @@ func (mm *MemberManager) Set(key string, val interface{}) {
 func (mm *MemberManager) GetMember(routerKey string) proto.IMember {
 	var memsub MemberSub
 	err := mm.routeInfo.View(func(tx *buntdb.Tx) error {
-		if val, err := tx.Get(routerKey); err != nil {
+		if val, err := tx.Get(routerKey); err == nil {
 			return jsonFastest.Unmarshal([]byte(val), &memsub)
 		} else {
 			return err
@@ -195,6 +195,10 @@ func (mm *MemberManager) GetMember(routerKey string) proto.IMember {
 	}
 
 	return &Member{MemberSub: memsub}
+}
+
+func (mm *MemberManager) GetRouter() *buntdb.DB{
+	return mm.routeInfo
 }
 
 // 本地没有则探测
@@ -228,6 +232,7 @@ func (mm *MemberManager) GetMemberWithRemote(routerKey string) proto.IMember {
 		//mm.CallAll("MemberSync.Probe", SyncRequest{Key: routerKey}, &resp)
 		//return nil
 	}
+	//logs.Log(logs.F{"memsub": memsub}).Debug("GetMemberWithRemote")
 
 	if memsub.port == 0 {
 		return nil
