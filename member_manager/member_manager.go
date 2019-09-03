@@ -197,7 +197,7 @@ func (mm *MemberManager) GetMember(routerKey string) proto.IMember {
 	return &Member{MemberSub: memsub}
 }
 
-func (mm *MemberManager) GetRouter() *buntdb.DB{
+func (mm *MemberManager) GetRouter() *buntdb.DB {
 	return mm.routeInfo
 }
 
@@ -314,6 +314,38 @@ func (mm *MemberManager) BroadCast(rpcname string, args interface{}, reply inter
 		member.Call(rpcname, args, reply)
 	}
 	return nil
+}
+
+func (mm *MemberManager) CallWithSync(routerKey, rpcName string, req, resp interface{}, localHandle func(found bool, req, resp interface{}) error) error {
+	if mem := mm.GetMemberWithRemote(routerKey); mem != nil {
+		// 有状态不一致的可能，mem 可能“错误的”没有获取到
+		if mem.GetName() == mm.GetLocal().GetName() {
+			// 自己处理
+			return localHandle(true, req, resp)
+		} else {
+			// 远程节点处理
+			// 如果报错，本地节点重试？ 目前放给业务节点去判断
+			return mem.Call(rpcName, req, resp)
+		}
+
+	} else {
+		// 自己处理
+		// 有状态不一致的可能，mem 可能“错误的”没有获取到
+		err := localHandle(false, req, resp)
+		if err == nil {
+			// 不受限制的协程， 后续使用anti2000之类的库可以优化
+			go func() {
+				mm.UpateLocalRoute(routerKey, mm.GetLocal())
+				mm.BroadCastRoute(routerKey, mm.GetLocal())
+			}()
+		}
+		return err
+	}
+}
+
+// 本地有就处理， 否则直接返回
+func (mm *MemberManager) OwnMember(routerKey string) proto.IMember {
+	return mm.GetMemberWithRemote(routerKey)
 }
 
 // 广播

@@ -37,9 +37,13 @@ type IMemberManager interface {
 	BroadCastRoute(routerKey string, member IMember) // 发布key在哪个节点， 至于发布策略，业务自己搞 一般第一次广播就行了
 
 
+	// 高度集成的接口，包括了查找及update router
+	// 查找节点，找不到则自己处理
+	CallWithSync(routerKey, rpcName string, req, resp interface{}, localHandle func(found bool, req, resp interface{}) error) error
 
 
-	// 以下这些接口 暂时没有真正的策略逻辑
+
+// 以下这些接口 暂时没有真正的策略逻辑
 	// sync 随机一个节点同步？
 	SyncRoute(member IMember)
 
