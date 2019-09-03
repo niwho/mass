@@ -50,7 +50,7 @@ func (req SyncRequest) GetKey() string {
 
 func (req SyncRequest) GetSourceNode() proto.IMember {
 	return &Member{
-		ISimpleRpc: simple_rpc.NewSimpleRpc(req.Node.host, req.Node.port),
+		ISimpleRpc: simple_rpc.NewSimpleRpc(req.Node.Host, req.Node.Port),
 		MemberSub:  req.Node,
 	}
 }
@@ -65,7 +65,7 @@ type SyncResponse struct {
 func (resp *SyncResponse) GetKeyNode() proto.IMember {
 	if resp.Node.Name != "" {
 		return &Member{
-			ISimpleRpc: simple_rpc.NewSimpleRpc(resp.Node.host, resp.Node.port),
+			ISimpleRpc: simple_rpc.NewSimpleRpc(resp.Node.Host, resp.Node.Port),
 			MemberSub:  resp.Node,
 		}
 	}
@@ -78,7 +78,7 @@ func (resp *SyncResponse) GetKey() string {
 
 func (resp *SyncResponse) GetSourceNode() proto.IMember {
 	return &Member{
-		ISimpleRpc: simple_rpc.NewSimpleRpc(resp.SouceNode.host, resp.SouceNode.port),
+		ISimpleRpc: simple_rpc.NewSimpleRpc(resp.SouceNode.Host, resp.SouceNode.Port),
 		MemberSub:  resp.SouceNode,
 	}
 }

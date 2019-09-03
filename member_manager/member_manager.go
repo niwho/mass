@@ -20,8 +20,8 @@ import (
 type MemberSub struct {
 	Name string `json:"name"`
 
-	host   string `json:"host"`
-	port   int    `json:"port"`
+	Host   string `json:"host"`
+	Port   int    `json:"port"`
 	TermId int64  `json:"term_id"`
 
 	State      int   `json:"state"`
@@ -38,8 +38,8 @@ func NewMember(name string, host string, port int) proto.IMember {
 		ISimpleRpc: simple_rpc.NewSimpleRpc(host, port),
 		MemberSub: MemberSub{
 			Name:   name,
-			host:   host,
-			port:   port,
+			Host:   host,
+			Port:   port,
 			State:  1,
 			TermId: time.Now().Unix(),
 		},
@@ -68,14 +68,14 @@ func (m *Member) SetActive() {
 
 func (m *Member) Call(rpcname string, args interface{}, reply interface{}) error {
 	if m.ISimpleRpc == nil {
-		m.ISimpleRpc = simple_rpc.NewSimpleRpc(m.host, m.port)
+		m.ISimpleRpc = simple_rpc.NewSimpleRpc(m.Host, m.Port)
 	}
 	return m.ISimpleRpc.Call(rpcname, args, reply)
 }
 
 func (m *Member) Pub(rpcname string, args interface{}, reply interface{}) error {
 	if m.ISimpleRpc == nil {
-		m.ISimpleRpc = simple_rpc.NewSimpleRpc(m.host, m.port)
+		m.ISimpleRpc = simple_rpc.NewSimpleRpc(m.Host, m.Port)
 	}
 	return m.ISimpleRpc.Pub(rpcname, args, reply)
 }
@@ -234,7 +234,7 @@ func (mm *MemberManager) GetMemberWithRemote(routerKey string) proto.IMember {
 	}
 	//logs.Log(logs.F{"memsub": memsub}).Debug("GetMemberWithRemote")
 
-	if memsub.port == 0 {
+	if memsub.Port == 0 {
 		return nil
 	}
 
@@ -272,7 +272,7 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 		}
 		return nil
 	})
-
+	logs.Log(logs.F{"err": err, "needSync": needSync}).Debug("")
 	// 还是广播所有人, 目前只反馈发起方 todo 反馈所有人
 	if needSync != nil {
 		var resp SyncResponse
