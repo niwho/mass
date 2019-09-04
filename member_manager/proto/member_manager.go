@@ -43,10 +43,11 @@ type IMemberManager interface {
 	// 高度集成的接口，包括了查找及update router
 	// 查找节点，找不到则自己处理
 	CallWithSync(routerKey, rpcName string, req, resp interface{}, localHandle func(found bool, req, resp interface{}) error) error
+	CallWithDelSync(routerKey, rpcName string, req, resp interface{}, localHandle func(req, resp interface{}) error) error
 
 
 
-// 以下这些接口 暂时没有真正的策略逻辑
+	// 以下这些接口 暂时没有真正的策略逻辑
 	// sync 随机一个节点同步？
 	SyncRoute(member IMember)
 

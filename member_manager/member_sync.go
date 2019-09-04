@@ -123,9 +123,11 @@ func (ms *MemberSync) DelKey(req SyncRequest, resp *SyncResponse) error {
 
 	ms.manager.RemoveLocalRoute(req.Key)
 
+
 	resp.ErrorCode = 0
 	resp.Node = req.Node
 	resp.Key = req.Key
 
 	return nil
 }
+

@@ -202,26 +202,12 @@ func (mm *MemberManager) GetRouter() *buntdb.DB {
 	return mm.routeInfo
 }
 
-func (mm *MemberManager) BroadCastDelRoute(routerKey string) error{
-	if mem := mm.GetMemberWithRemote(routerKey); mem != nil {
-		// 有状态不一致的可能，mem 可能“错误的”没有获取到
-		if mem.GetName() == mm.GetLocal().GetName() {
-			// 自己处理
-			return mm.RemoveLocalRoute(routerKey)
-		} else {
-			// 远程节点处理
-			// 如果报错，本地节点重试？ 目前放给业务节点去判断
-
-			//return mem.Call("MemberSync.DelKey", req, resp)
-			var resp SyncResponse
-			return mem.Pub("MemberSync.DelKey", SyncRequest{
-				Key:  routerKey,
-				Node: mm.GetLocal().(*Member).MemberSub,
-			}, &resp)
-		}
-
-	}
-	return errors.New("not found")
+func (mm *MemberManager) BroadCastDelRoute(routerKey string) error {
+	var resp SyncResponse
+	return mm.BroadCast("MemberSync.DelKey", SyncRequest{
+		Key:  routerKey,
+		Node: mm.GetLocal().(*Member).MemberSub,
+	}, &resp)
 }
 
 // 本地没有则探测
@@ -380,6 +366,29 @@ func (mm *MemberManager) CallWithSync(routerKey, rpcName string, req, resp inter
 		}
 		return err
 	}
+}
+
+func (mm *MemberManager) CallWithDelSync(routerKey, rpcName string, req, resp interface{}, localHandle func(req, resp interface{}) error) error {
+	if mem := mm.GetMemberWithRemote(routerKey); mem != nil {
+		// 有状态不一致的可能，mem 可能“错误的”没有获取到
+		if mem.GetName() == mm.GetLocal().GetName() {
+			// 自己处理
+			go func() {
+				mm.RemoveLocalRoute(routerKey)
+				mm.BroadCastDelRoute(routerKey)
+			}()
+			return localHandle(req, resp)
+		} else {
+			// 别的节点处理
+			go func() {
+				mm.RemoveLocalRoute(routerKey)
+				mm.BroadCastDelRoute(routerKey)
+			}()
+			return mem.Call(rpcName, req, resp)
+		}
+
+	}
+	return errors.New("not found")
 }
 
 // 本地有就处理， 否则直接返回
