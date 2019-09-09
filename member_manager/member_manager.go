@@ -159,6 +159,10 @@ func (mm *MemberManager) StartService() error {
 	return err
 }
 
+func (mm *MemberManager) GetServiceXX(blocking bool){
+	 mm.IDiscovery.GetService(blocking)
+}
+
 // 使用discovery获取
 func (mm *MemberManager) GetMembers() []proto.IMember {
 	var members []proto.IMember

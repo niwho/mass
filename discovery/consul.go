@@ -110,8 +110,6 @@ func (reg *Registration) GetService(blocking bool) ([]proto.IService, error) {
 	q := consulapi.QueryOptions{
 		UseCache:   true,
 		AllowStale: true,
-		WaitIndex:  reg.LastIndex,
-		WaitTime:   time.Minute * 5,
 	}
 	if blocking {
 		q.WaitTime = time.Minute * 5
@@ -128,6 +126,9 @@ func (reg *Registration) GetService(blocking bool) ([]proto.IService, error) {
 	var iss []proto.IService
 	for _, ei := range e {
 		logs.Log(logs.F{"ei": ei, "svr": ei.Service}).Debug("GetService")
+		if ei.Service == nil {
+			continue
+		}
 		//log.Println(ei.Service.Address, ei.Service.Port, ei.Service.Meta, ei.Service.Service, ei.Service.ID, ei.Node.Address, ei.Node.ID)
 		iss = append(iss, &Registration{
 			Id:          ei.Service.ID,

@@ -25,6 +25,7 @@ type IMemberManager interface {
 	RegisteRpc(m ...interface{}) error
 	StartService() error
 	Unregister()
+	GetServiceXX(blocking bool)
 
 	GetMembers() []IMember
 	GetLocal() IMember
