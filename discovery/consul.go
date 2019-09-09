@@ -6,7 +6,6 @@ import (
 	"github.com/niwho/logs"
 	"github.com/niwho/mass/discovery/proto"
 	"github.com/niwho/utils"
-	"log"
 	"sync"
 	"time"
 )
@@ -102,7 +101,7 @@ func (reg *Registration) Register(nodeName, serviceName string, tags []string, m
 	err := reg.client.Agent().ServiceRegister(registration)
 
 	if err != nil {
-		log.Fatal("register server error : ", err)
+		// log.Fatal("register server error : ", err)
 		logs.Log(logs.F{"err": err}).Error("Register")
 	}
 }
