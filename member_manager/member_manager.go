@@ -515,7 +515,7 @@ func (mm *MemberManager) backgroud() error {
 		for !mm.stoped {
 			updateTime := time.Now().Unix()
 			// 更新节点
-			nodes, _ := mm.GetService()
+			nodes, _ := mm.GetService(true)
 			//fmt.Println("backgroud", nodes)
 			for _, node := range nodes {
 				// 相互通信的端口信息在meta里，最外层的port是服务的端口（check health）

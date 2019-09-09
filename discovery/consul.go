@@ -56,7 +56,7 @@ type Registration struct {
 	Meta map[string]string
 	Tags []string
 
-	client *consulapi.Client
+	client    *consulapi.Client
 	LastIndex uint64
 }
 
@@ -107,12 +107,16 @@ func (reg *Registration) Register(nodeName, serviceName string, tags []string, m
 	}
 }
 
-func (reg *Registration) GetService() ([]proto.IService, error) {
+func (reg *Registration) GetService(blocking bool) ([]proto.IService, error) {
 	q := consulapi.QueryOptions{
 		UseCache:   true,
 		AllowStale: true,
 		WaitIndex:  reg.LastIndex,
 		WaitTime:   time.Minute * 5,
+	}
+	if blocking {
+		q.WaitTime = time.Minute * 5
+		q.WaitIndex = reg.LastIndex
 	}
 
 	e, meta, err := reg.client.Health().Service(reg.ServiceName, "", true, &q)
@@ -121,7 +125,7 @@ func (reg *Registration) GetService() ([]proto.IService, error) {
 		reg.LastIndex = 0
 		return nil, err
 	}
-	reg.LastIndex =  meta.LastIndex
+	reg.LastIndex = meta.LastIndex
 	var iss []proto.IService
 	for _, ei := range e {
 		//log.Println(ei.Service.Address, ei.Service.Port, ei.Service.Meta, ei.Service.Service, ei.Service.ID, ei.Node.Address, ei.Node.ID)

@@ -2,7 +2,7 @@ package proto
 
 type IRegister interface {
 	Register(name, service string, tags []string, meta map[string]string, advt string, port int)
-	GetService() ([]IService, error)
+	GetService(blocking bool) ([]IService, error)
 	Unregister()
 }
 
@@ -20,5 +20,5 @@ type IService interface {
 type IDiscovery interface {
 	RegisterService(service IService)
 	Unregister()
-	GetService() ([]IService, error)
+	GetService(blocking bool) ([]IService, error)
 }

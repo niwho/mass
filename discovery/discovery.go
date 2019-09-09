@@ -77,6 +77,6 @@ func (dc *Discovery) RegisterService(service proto.IService) {
 	dc.Register(dc.GetName(), dc.GetServiceName(), dc.GetTags(), dc.GetMeta(), dc.LocalIp, dc.Port)
 }
 
-func (dc *Discovery) GetService() ([]proto.IService, error) {
-	return dc.IRegister.GetService()
+func (dc *Discovery) GetService(blocking bool) ([]proto.IService, error) {
+	return dc.IRegister.GetService(blocking)
 }
