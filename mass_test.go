@@ -11,7 +11,7 @@ func TestNewMemberManager(t *testing.T) {
 	cl, _ := member_manager.NewMemberManager("nodename11", "mem_dist", "127.0.0.1", 3111, map[string]string{
 		"c_host": "127.0.0.1",
 		"c_port": "9111",
-	}, "172.17.0.139:8088")
+	}, "your consul")
 	cl.GetServiceXX(true)
 	time.Sleep(5 * time.Second)
 
