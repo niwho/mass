@@ -8,6 +8,10 @@ import (
 )
 
 func TestNewMemberManager(t *testing.T) {
+	m:= map[string]interface{}{}
+	val, ok := m["xx"].(string)
+	fmt.Println("11 ",val, ok)
+	return
 	cl, _ := member_manager.NewMemberManager("nodename11", "mem_dist", "127.0.0.1", 3111, map[string]string{
 		"c_host": "127.0.0.1",
 		"c_port": "9111",

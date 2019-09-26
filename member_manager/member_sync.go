@@ -131,3 +131,15 @@ func (ms *MemberSync) DelKey(req SyncRequest, resp *SyncResponse) error {
 	return nil
 }
 
+func (ms *MemberSync) DelKeyV2(req SyncRequest, resp *SyncResponse) error {
+	resp.SouceNode = ms.local.(*Member).MemberSub
+
+	ms.manager.RemoveUpdateLocalRoute(req.Key, &Member{MemberSub: req.Node})
+
+
+	resp.ErrorCode = 0
+	resp.Node = req.Node
+	resp.Key = req.Key
+
+	return nil
+}

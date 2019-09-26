@@ -59,6 +59,10 @@ func (m *Member) GetTermId() int64 {
 	return m.TermId
 }
 
+func (m *Member) UpdateTermId(termId int64) {
+	m.TermId = termId
+}
+
 func (m *Member) SetInActive() {
 	m.State = 0
 }
@@ -159,8 +163,8 @@ func (mm *MemberManager) StartService() error {
 	return err
 }
 
-func (mm *MemberManager) GetServiceXX(blocking bool){
-	 mm.IDiscovery.GetService(blocking)
+func (mm *MemberManager) GetServiceXX(blocking bool) {
+	mm.IDiscovery.GetService(blocking)
 }
 
 // 使用discovery获取
@@ -175,6 +179,20 @@ func (mm *MemberManager) GetMembers() []proto.IMember {
 
 func (mm *MemberManager) GetLocal() proto.IMember {
 	return mm.localMember
+}
+
+func (mm *MemberManager) GetLocalCopy() proto.IMember {
+	mx := mm.localMember.(*Member)
+	return &Member{
+		MemberSub: MemberSub{
+			Name:       mx.Name,
+			Host:       mx.Host,
+			Port:       mx.Port,
+			TermId:     mx.TermId,
+			State:      mx.State,
+			UpdateTime: mx.UpdateTime,
+		},
+	}
 }
 
 func (mm *MemberManager) Set(key string, val interface{}) {
@@ -209,6 +227,14 @@ func (mm *MemberManager) GetRouter() *buntdb.DB {
 func (mm *MemberManager) BroadCastDelRoute(routerKey string) error {
 	var resp SyncResponse
 	return mm.BroadCast("MemberSync.DelKey", SyncRequest{
+		Key:  routerKey,
+		Node: mm.GetLocal().(*Member).MemberSub,
+	}, &resp)
+}
+
+func (mm *MemberManager) BroadCastDelUpdateRoute(routerKey string, member proto.IMember) error {
+	var resp SyncResponse
+	return mm.BroadCast("MemberSync.DelKeyV2", SyncRequest{
 		Key:  routerKey,
 		Node: mm.GetLocal().(*Member).MemberSub,
 	}, &resp)
@@ -325,6 +351,30 @@ func (mm *MemberManager) BroadCastRoute(routerKey string, member proto.IMember) 
 	}, &resp)
 }
 
+func (mm *MemberManager) RemoveUpdateLocalRoute(routerKey string, member proto.IMember) error {
+
+	err := mm.routeInfo.View(func(tx *buntdb.Tx) error {
+		_, err := tx.Get(routerKey)
+		return err
+	})
+	//found
+	if err == nil {
+		err = mm.routeInfo.Update(func(tx *buntdb.Tx) error {
+			if val, err := tx.Get(routerKey); err == nil {
+				OldTermId := jsoniter.Get([]byte(val), "term_id").ToInt64()
+				logs.Log(logs.F{"old": string(val), "now": member}).Debug("")
+				if member.GetTermId() >= OldTermId {
+					_, err := tx.Delete(routerKey)
+					return err
+				}
+			}
+			return nil
+		})
+	}
+	return nil
+
+}
+
 //和另一个结点交互路由信息
 func (mm *MemberManager) SyncRoute(member proto.IMember) {
 	//
@@ -372,6 +422,71 @@ func (mm *MemberManager) CallWithSync(routerKey, rpcName string, req, resp inter
 	}
 }
 
+func (mm *MemberManager) CallWithOnceSync(routerKey, rpcName string, req, resp interface{}, localHandle func(found bool, req, resp interface{}) error) error {
+	if mem := mm.GetMemberWithRemote(routerKey); mem != nil {
+		// 有状态不一致的可能，mem 可能“错误的”没有获取到
+		if mem.GetName() == mm.GetLocal().GetName() {
+			// 自己处理
+			return localHandle(true, req, resp)
+		} else {
+			// 远程节点处理
+			// 如果报错，本地节点重试？ 目前放给业务节点去判断
+			return mem.Call(rpcName, req, resp)
+		}
+
+	} else {
+		// 自己处理
+		// 有状态不一致的可能，mem 可能“错误的”没有获取到
+		// 轮训其它节点是否能处理，最多尝试3次
+		tryCount := 0
+		for _, member := range mm.GetMembers() {
+			// 是否显示过滤自己local
+			// 并发pub
+			tryCount++
+			err := member.Call(rpcName, req, resp)
+			if err == nil {
+				mm.UpateLocalRoute(routerKey, member)
+				mm.BroadCastRoute(routerKey, member)
+				return nil
+			}
+
+			if tryCount > 2 {
+				return errors.New("try all no such key")
+			}
+		}
+	}
+	return nil
+}
+
+func (mm *MemberManager) CallWithUpdateSync(routerKey, rpcName string, req, resp interface{}, localHandle func(found bool, req, resp interface{}) error) error {
+	if mem := mm.GetMemberWithRemote(routerKey); mem != nil {
+		// 有状态不一致的可能，mem 可能“错误的”没有获取到
+		if mem.GetName() == mm.GetLocal().GetName() {
+			// 自己处理
+			return localHandle(true, req, resp)
+		} else {
+			// 远程节点处理
+			// 如果报错，本地节点重试？ 目前放给业务节点去判断
+			return mem.Call(rpcName, req, resp)
+		}
+
+	} else {
+		// 自己处理
+		// 有状态不一致的可能，mem 可能“错误的”没有获取到
+		err := localHandle(false, req, resp)
+		if err == nil {
+			// 不受限制的协程， 后续使用anti2000之类的库可以优化
+			go func() {
+				lc := mm.GetLocalCopy()
+				lc.UpdateTermId(time.Now().Unix())
+				mm.UpateLocalRoute(routerKey, lc)
+				mm.BroadCastRoute(routerKey, lc)
+			}()
+		}
+		return err
+	}
+}
+
 func (mm *MemberManager) CallWithDelSync(routerKey, rpcName string, req, resp interface{}, localHandle func(req, resp interface{}) error) error {
 	if mem := mm.GetMemberWithRemote(routerKey); mem != nil {
 		// 有状态不一致的可能，mem 可能“错误的”没有获取到
@@ -392,6 +507,7 @@ func (mm *MemberManager) CallWithDelSync(routerKey, rpcName string, req, resp in
 		}
 
 	}
+	// 有泄露key的风险
 	return errors.New("not found")
 }
 
