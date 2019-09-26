@@ -30,6 +30,7 @@ type IMemberManager interface {
 
 	GetMembers() []IMember
 	GetLocal() IMember
+	GetLocalCopy() IMember
 	//Set(key string, val interface{})
 	// 返回路由的IMember ,r如果没有则本地做，并广播其他已知节点 这个状态，其他节点收到要clear本地local记录
 	GetMember(routerKey string) IMember           // 只取当前节点 只是判断取 全局的 还是 local的
