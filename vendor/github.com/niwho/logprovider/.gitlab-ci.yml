@@ -1,0 +1,12 @@
+image: hub.byted.org/golang:1.6
+
+before_script:
+  - mkdir -p $GOPATH/src/code.byted.org/gopkg
+  - cp -r $CI_PROJECT_DIR $GOPATH/src/code.byted.org/gopkg/logs
+  - cd $GOPATH/src/code.byted.org/gopkg/logs
+  - go get -d ./
+ 
+test:
+  script:
+  - cd $GOPATH/src/code.byted.org/gopkg/logs
+  - go test -v -cover -bench .
