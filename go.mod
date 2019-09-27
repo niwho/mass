@@ -11,16 +11,22 @@ require (
 	github.com/colinmarc/hdfs v1.1.3 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
-	github.com/hashicorp/consul/api v1.2.0
+	github.com/hashicorp/consul v1.4.2
+	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
+	github.com/hashicorp/go-rootcerts v1.0.1 // indirect
+	github.com/hashicorp/serf v0.8.4 // indirect
 	github.com/jinzhu/gorm v1.9.10 // indirect
 	github.com/json-iterator/go v1.1.7
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
+	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/niwho/elasticsearch v0.0.0-20180619101651-78b8a43b7b0e // indirect
 	github.com/niwho/inmem v0.0.0-20181206194808-841bf670c6fa // indirect
 	github.com/niwho/logprovider v0.0.0-20180716031215-f6e96503983e // indirect
 	github.com/niwho/logs v0.0.0-20190531084657-1c1ac121febb
 	github.com/niwho/utils v0.0.0-20190717094620-159e5e804688
 	github.com/olivere/elastic v6.2.23+incompatible // indirect
+	github.com/pascaldekloe/goe v0.1.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/satori/go.uuid v0.0.0-20181028125025-b2ce2384e17b // indirect
 	github.com/sirupsen/logrus v1.4.2 // indirect
