@@ -245,6 +245,10 @@ func (mm *MemberManager) GetMemberWithTry(routerKey string, retryCount int) (wan
 	members := mm.GetMembers()
 	memLen := len(members)
 
+	if memLen == 0 {
+		return
+	}
+
 	rand.Seed(time.Now().Unix())
 	startPos := rand.Intn(memLen)
 
