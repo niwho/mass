@@ -11,6 +11,7 @@ import (
 	"github.com/niwho/mass/simple_rpc"
 	rpc_proto "github.com/niwho/mass/simple_rpc/proto"
 	"github.com/tidwall/buntdb"
+	"math/rand"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -218,6 +219,61 @@ func (mm *MemberManager) GetMember(routerKey string) proto.IMember {
 	}
 
 	return &Member{MemberSub: memsub}
+}
+
+func (mm *MemberManager) GetMemberWithTry(routerKey string, retryCount int) (wantMember proto.IMember) {
+	var memsub MemberSub
+	err := mm.routeInfo.View(func(tx *buntdb.Tx) error {
+		if val, err := tx.Get(routerKey); err == nil {
+			return jsonFastest.Unmarshal([]byte(val), &memsub)
+		} else {
+			return err
+		}
+	})
+	if err == nil {
+		if memsub.Host != "" && memsub.Port > 0 {
+
+			return &Member{MemberSub: memsub}
+		}
+	}
+
+	// 重试
+	if retryCount <= 0 {
+		return
+	}
+
+	members := mm.GetMembers()
+	memLen := len(members)
+
+	rand.Seed(time.Now().Unix())
+	startPos := rand.Intn(memLen)
+
+	var req SyncRequest
+	req.Key = routerKey
+	var resp SyncResponse
+	var trytry int
+	for i := startPos; ; i++ {
+		ri := i % memLen
+		if i > memLen && ri == startPos {
+			// 已经尝试一圈了
+			break
+		}
+		if members[ri].GetName() == mm.GetLocal().GetName() {
+			continue
+		}
+
+		trytry++
+		members[ri].Call("MemberSync.Probe", req, resp)
+		if resp.Node.Host != "" && resp.Node.Port > 0 {
+			// doing
+			wantMember = &Member{MemberSub: resp.Node}
+			break
+		}
+		if trytry >= retryCount {
+			break
+		}
+	}
+	return
 }
 
 func (mm *MemberManager) GetRouter() *buntdb.DB {
