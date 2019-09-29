@@ -421,19 +421,16 @@ func (mm *MemberManager) BroadCastRoute(routerKey string, member proto.IMember) 
 
 func (mm *MemberManager) RemoveUpdateLocalRoute(routerKey string, member proto.IMember) error {
 
-	fmt.Println(11111, routerKey, member)
 	err := mm.routeInfo.View(func(tx *buntdb.Tx) error {
 		_, err := tx.Get(routerKey)
 		return err
 	})
-	fmt.Println(11111, routerKey, member, err)
 	//found
 	if err == nil {
 		err = mm.routeInfo.Update(func(tx *buntdb.Tx) error {
 			if val, err := tx.Get(routerKey); err == nil {
 				OldTermId := jsoniter.Get([]byte(val), "term_id").ToInt64()
 				logs.Log(logs.F{"old": string(val), "now": member}).Debug("")
-				fmt.Println(11111000, OldTermId, member.GetTermId())
 				if member.GetTermId() >= OldTermId {
 					_, err := tx.Delete(routerKey)
 					return err
@@ -441,7 +438,6 @@ func (mm *MemberManager) RemoveUpdateLocalRoute(routerKey string, member proto.I
 			}
 			return nil
 		})
-		fmt.Println(11111222, routerKey, member, err)
 	}
 	return err
 
