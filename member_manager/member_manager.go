@@ -270,6 +270,12 @@ func (mm *MemberManager) GetMemberWithTry(routerKey string, retryCount int) (wan
 		members[ri].Call("MemberSync.Probe", req, &resp)
 		if resp.Node.Host != "" && resp.Node.Port > 0 {
 			// doing
+			if resp.Node.Name == mm.GetLocal().GetName(){
+				// 自己没有别人有，这是异常情况
+				// 告知节点删除
+				mm.BroadCastDelUpdateRoute(routerKey,  &Member{MemberSub: resp.Node})
+				break
+			}
 			wantMember = &Member{MemberSub: resp.Node}
 			// 更新到本地
 			mm.UpateLocalRoute(routerKey, wantMember)
@@ -298,7 +304,7 @@ func (mm *MemberManager) BroadCastDelUpdateRoute(routerKey string, member proto.
 	var resp SyncResponse
 	return mm.BroadCast("MemberSync.DelKeyV2", SyncRequest{
 		Key:  routerKey,
-		Node: mm.GetLocal().(*Member).MemberSub,
+		Node: member.(*Member).MemberSub,
 	}, &resp)
 }
 
