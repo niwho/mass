@@ -267,7 +267,7 @@ func (mm *MemberManager) GetMemberWithTry(routerKey string, retryCount int) (wan
 		}
 
 		trytry++
-		members[ri].Call("MemberSync.Probe", req, resp)
+		members[ri].Call("MemberSync.Probe", req, &resp)
 		if resp.Node.Host != "" && resp.Node.Port > 0 {
 			// doing
 			wantMember = &Member{MemberSub: resp.Node}
