@@ -271,6 +271,8 @@ func (mm *MemberManager) GetMemberWithTry(routerKey string, retryCount int) (wan
 		if resp.Node.Host != "" && resp.Node.Port > 0 {
 			// doing
 			wantMember = &Member{MemberSub: resp.Node}
+			// 更新到本地
+			mm.UpateLocalRoute(routerKey, wantMember)
 			break
 		}
 		if trytry >= retryCount {
