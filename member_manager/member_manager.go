@@ -270,10 +270,10 @@ func (mm *MemberManager) GetMemberWithTry(routerKey string, retryCount int) (wan
 		members[ri].Call("MemberSync.Probe", req, &resp)
 		if resp.Node.Host != "" && resp.Node.Port > 0 {
 			// doing
-			if resp.Node.Name == mm.GetLocal().GetName(){
+			if resp.Node.Name == mm.GetLocal().GetName() {
 				// 自己没有别人有，这是异常情况
 				// 告知节点删除
-				mm.BroadCastDelUpdateRoute(routerKey,  &Member{MemberSub: resp.Node})
+				mm.BroadCastDelUpdateRoute(routerKey, &Member{MemberSub: resp.Node})
 				break
 			}
 			wantMember = &Member{MemberSub: resp.Node}
@@ -364,7 +364,7 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 				// 这种情况是不是触发一次广播当前的最新的routeKey ->member的映射，防止别的节点也有旧的数据映射
 				// 或反馈 请求来源方
 				var ms MemberSub
-				jsonCompatible.Unmarshal([]byte(val), &MemberSub{})
+				jsonCompatible.Unmarshal([]byte(val), &ms)
 				needSync = &ms
 
 			}
