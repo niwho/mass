@@ -104,6 +104,8 @@ type MemberManager struct {
 	routeInfo *buntdb.DB
 
 	stoped bool
+
+	removedKeys chan string
 }
 
 func NewMemberManager(localName, ServiceName string, localIp string, port int, meta map[string]string, consuleAddress string) (proto.IMemberManager, error) {
@@ -118,6 +120,7 @@ func NewMemberManager(localName, ServiceName string, localIp string, port int, m
 		LocalIp:     localIp,
 		Port:        port,
 		localMember: NewMember(localName, host, int(cport)),
+		removedKeys: make(chan string, 128),
 	}
 	/*
 		local, _ := buntdb.Open(":memory:")
@@ -348,6 +351,18 @@ func (mm *MemberManager) GetMemberWithRemote(routerKey string) proto.IMember {
 	return &Member{MemberSub: memsub}
 }
 
+func (mm *MemberManager) GetRemovedKeysChan(routerKey string) chan string {
+	return mm.removedKeys
+}
+
+func (mm *MemberManager) routeEvent(routerKey string) {
+	select {
+	case mm.removedKeys <- routerKey:
+	default:
+		return
+	}
+}
+
 // 根据termid更新
 func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember) {
 	var needSync *MemberSub
@@ -359,6 +374,7 @@ func (mm *MemberManager) UpateLocalRoute(routerKey string, member proto.IMember)
 			if member.GetTermId() > OldTermId {
 				if val, err := member.Marshal(); err == nil {
 					tx.Set(routerKey, string(val), nil)
+					mm.routeEvent(routerKey)
 				}
 			} else {
 				// 这种情况是不是触发一次广播当前的最新的routeKey ->member的映射，防止别的节点也有旧的数据映射

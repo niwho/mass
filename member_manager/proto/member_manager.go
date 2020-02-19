@@ -21,6 +21,7 @@ type IMember interface {
 // 维护一颗B+数的映射，key->IMember
 // 启动时从一个节点同步过来
 type IMemberManager interface {
+	GetRemovedKeysChan(routerKey string) chan string
 
 	// 同时会注册结点（服务）
 	RegisteRpc(m ...interface{}) error
@@ -43,7 +44,7 @@ type IMemberManager interface {
 
 	BroadCastRoute(routerKey string, member IMember) // 发布key在哪个节点， 至于发布策略，业务自己搞 一般第一次广播就行了
 	BroadCastDelRoute(routerKey string) error
-	BroadCastDelUpdateRoute(routerKey string, member IMember) error//
+	BroadCastDelUpdateRoute(routerKey string, member IMember) error //
 
 	// 高度集成的接口，包括了查找及update router
 	// 查找节点，找不到则自己处理
